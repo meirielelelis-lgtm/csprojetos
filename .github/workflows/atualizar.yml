@@ -1,0 +1,64 @@
+name: Atualizar painel
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"      # a cada 3 horas
+  workflow_dispatch:            # botão "Run workflow" para atualizar na hora
+    inputs:
+      completa:
+        description: "Atualização completa (reconsulta todas as proposições)"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: atualizar-painel
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: github-pages
+      url: ${{ steps.publicar.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Buscar dados na Câmara
+        env:
+          DEPUTADO_ID: "204488"
+          TIPOS: "PL,PLP,PEC,PDL"
+          ANO_INICIAL: "2015"
+          COMPLETA: ${{ inputs.completa && '1' || '0' }}
+        run: python scripts/atualizar.py
+
+      - name: Guardar dados atualizados
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/dados.json
+          if git diff --cached --quiet; then
+            echo "Sem mudanças nos dados."
+          else
+            git commit -m "Atualiza proposições"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - name: Publicar página
+        id: publicar
+        uses: actions/deploy-pages@v4

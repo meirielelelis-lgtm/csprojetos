@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projetos de Lei · Célio Studart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f6f8; --panel:#fff; --line:#e3e7ec; --fg:#17202a; --muted:#5f6b78; --soft:#8a95a1;
+    --accent:#0b7a4b; --accent-soft:#e6f4ed; --blue:#1769c2; --blue-soft:#e8f1fb;
+    --amber:#b26a00; --amber-soft:#fff3df; --red:#b3261e; --red-soft:#fdecea; --gray-soft:#eef1f4;
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+  a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 18px 48px}
+  .painel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+  h2{font-size:15px;margin:0 0 12px;font-weight:600}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+
+  /* topo */
+  .topo{display:flex;gap:18px;align-items:center;padding:18px 20px;flex-wrap:wrap}
+  .topo img{width:72px;height:88px;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:var(--gray-soft)}
+  .topo .id{flex:1;min-width:220px}
+  .topo h1{margin:0;font-size:22px;letter-spacing:-.01em}
+  .topo .sub{color:var(--muted);margin:2px 0 4px}
+  .selo{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);border-radius:99px;padding:2px 9px;margin-left:8px;vertical-align:3px}
+  .sync{text-align:right;color:var(--muted);font-size:13px}
+  .sync b{color:var(--fg);font-weight:600}
+  .sync .ponto{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:1px}
+
+  /* indicadores */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+  .kpi{all:unset;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;transition:border-color .15s, box-shadow .15s}
+  .kpi:hover{border-color:#c4ccd5}
+  .kpi:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .kpi.ativo{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-soft)}
+  .kpi .rot{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center}
+  .kpi .num{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+  .bolinha{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+  .duas{display:grid;grid-template-columns:1.25fr 1fr;gap:14px}
+  @media (max-width:860px){.duas{grid-template-columns:1fr}}
+  .duas .painel{padding:16px 18px}
+
+  /* últimas movimentações */
+  .ultimas{list-style:none;margin:0;padding:0;max-height:330px;overflow:auto}
+  .ultimas li{padding:9px 0;border-top:1px solid var(--line);cursor:pointer}
+  .ultimas li:first-child{border-top:0;padding-top:0}
+  .ultimas li:hover .sig{text-decoration:underline}
+  .ultimas .sig{font-weight:600;color:var(--blue)}
+  .ultimas .dt{color:var(--soft);font-size:13px}
+  .ultimas .ds{color:var(--muted);font-size:13.5px}
+
+  /* por situação */
+  .barras{display:flex;flex-direction:column;gap:7px}
+  .barra{all:unset;cursor:pointer;display:grid;grid-template-columns:1fr 46px;gap:8px;align-items:center;font-size:13px}
+  .barra .t{position:relative;padding:5px 8px;border-radius:6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .barra .t i{position:absolute;inset:0 auto 0 0;background:var(--blue-soft);border-radius:6px;z-index:0}
+  .barra .t span{position:relative;z-index:1}
+  .barra .n{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+  .barra:hover .t span{text-decoration:underline}
+  .barra.ativo .t i{background:#cfe2f8}
+
+  /* filtros */
+  .filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 14px;margin:14px 0 10px;position:sticky;top:0;z-index:5}
+  @media (max-width:700px){.filtros{position:static}.filtros select{flex:1 1 45%}}
+  .filtros input,.filtros select{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:#fff;color:var(--fg)}
+  .filtros input{flex:1;min-width:200px}
+  .filtros button{font:inherit;font-size:13.5px;border:0;background:none;color:var(--blue);cursor:pointer;padding:6px}
+  .contagem{color:var(--muted);font-size:13.5px;margin:0 2px 10px}
+  .contagem b{color:var(--fg)}
+
+  /* lista */
+  .lista{display:flex;flex-direction:column;gap:10px}
+  .prop{padding:14px 16px}
+  .prop .lin1{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .prop .sigla{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:600;font-size:14.5px}
+  .chip{font-size:12px;font-weight:600;border-radius:99px;padding:2px 9px}
+  .c-tramitacao{background:var(--blue-soft);color:var(--blue)}
+  .c-aprovada{background:var(--amber-soft);color:var(--amber)}
+  .c-lei{background:var(--accent-soft);color:var(--accent)}
+  .c-arquivada{background:var(--gray-soft);color:var(--muted)}
+  .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 8px}
+  .tag.urg{color:var(--red);border-color:#f3c7c3;background:var(--red-soft)}
+  .tag.parada{color:var(--amber);border-color:#f2d9ae}
+  .prop .ementa{margin:8px 0 6px}
+  .prop .mov{color:var(--muted);font-size:13.5px;margin:0}
+  .prop .mov b{color:var(--fg);font-weight:600}
+  details{margin-top:8px}
+  summary{cursor:pointer;color:var(--blue);font-size:13.5px;list-style:none;width:max-content}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸ ";} details[open] summary::before{content:"▾ ";}
+  .det{margin-top:10px;padding:12px 14px;background:#f8fafb;border:1px solid var(--line);border-radius:10px;font-size:13.5px}
+  .det dl{display:grid;grid-template-columns:150px 1fr;gap:4px 12px;margin:0 0 10px}
+  .det dt{color:var(--muted)} .det dd{margin:0}
+  @media (max-width:560px){.det dl{grid-template-columns:1fr}.det dd{margin-bottom:6px}}
+  .det h3{font-size:13px;margin:10px 0 6px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  .hist{list-style:none;margin:0;padding:0;border-left:2px solid var(--line)}
+  .hist li{padding:0 0 8px 12px;position:relative}
+  .hist li::before{content:"";position:absolute;left:-5px;top:7px;width:8px;height:8px;border-radius:50%;background:#c4ccd5}
+  .hist li:first-child::before{background:var(--blue)}
+  .hist .q{color:var(--soft);font-size:12.5px}
+  .links{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px}
+  .mais{display:block;margin:14px auto 0;font:inherit;border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 18px;cursor:pointer}
+  .vazio,.erro{padding:30px;text-align:center;color:var(--muted)}
+  .erro{color:var(--red)}
+  footer{color:var(--soft);font-size:12.5px;margin-top:28px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="painel topo">
+    <img id="foto" alt="" onerror="this.hidden=true">
+    <div class="id">
+      <h1><span id="nome">Carregando...</span><span class="selo">Câmara dos Deputados</span></h1>
+      <div class="sub" id="sub"></div>
+      <a id="perfil" href="#" target="_blank" rel="noopener">Perfil na Câmara ↗</a>
+    </div>
+    <div class="sync">
+      <div><span class="ponto"></span>Dados atualizados em <b id="atualizado">...</b></div>
+      <div>Atualização automática a cada 3 horas</div>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="duas">
+    <div class="painel">
+      <h2>Últimas movimentações</h2>
+      <ol class="ultimas" id="ultimas"></ol>
+    </div>
+    <div class="painel">
+      <h2>Por situação atual <span style="color:var(--soft);font-weight:400;font-size:12.5px">(clique para filtrar)</span></h2>
+      <div class="barras" id="barras"></div>
+    </div>
+  </section>
+
+  <section class="painel filtros" aria-label="Filtros">
+    <input id="busca" type="search" placeholder="Buscar por número ou assunto (ex.: PL 1234/2023, animais, saúde)">
+    <select id="fTipo" aria-label="Tipo"><option value="">Todos os tipos</option></select>
+    <select id="fAno" aria-label="Ano"><option value="">Todos os anos</option></select>
+    <select id="fAutoria" aria-label="Autoria">
+      <option value="">Autoria e coautoria</option>
+      <option value="principal">Só autoria principal</option>
+      <option value="coautoria">Só coautoria</option>
+    </select>
+    <select id="fOrdem" aria-label="Ordenar">
+      <option value="mov">Movimentação mais recente</option>
+      <option value="antiga">Parados há mais tempo</option>
+      <option value="numero">Número (mais novo primeiro)</option>
+    </select>
+    <button id="limpar" type="button">Limpar filtros</button>
+  </section>
+
+  <div class="contagem" id="contagem"></div>
+  <section class="lista" id="lista"><div class="vazio">Carregando proposições...</div></section>
+  <button class="mais" id="mais" type="button" hidden>Mostrar mais</button>
+
+  <footer>
+    Fonte: <a href="https://dadosabertos.camara.leg.br" target="_blank" rel="noopener">Dados Abertos da Câmara dos Deputados</a>.
+    As situações seguem a classificação da Câmara; a categoria (em tramitação, aprovada, lei, arquivada) é calculada a partir dela.
+  </footer>
+</div>
+
+<script>
+(() => {
+  const CATS = {
+    tramitacao: {nome: "Em tramitação", cor: "var(--blue)"},
+    aprovada:   {nome: "Aprovada na Câmara", cor: "var(--amber)"},
+    lei:        {nome: "Virou lei", cor: "var(--accent)"},
+    arquivada:  {nome: "Arquivada / encerrada", cor: "var(--soft)"},
+  };
+  const POR_PAGINA = 40;
+  const DIA = 86400000;
+  const $ = s => document.querySelector(s);
+  let dados = null, props = [], visiveis = POR_PAGINA;
+  const filtro = {cat: "", extra: "", situacao: "", tipo: "", ano: "", autoria: "", busca: "", ordem: "mov"};
+
+  const semAcento = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const el = (tag, attrs = {}, ...filhos) => {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === "class") e.className = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v);
+    }
+    for (const f of filhos.flat()) if (f != null && f !== "") e.append(f instanceof Node ? f : String(f));
+    return e;
+  };
+  const data = s => { if (!s) return null; const d = new Date(s); return isNaN(d) ? null : d; };
+  const fmt = s => { const d = data(s); return d ? d.toLocaleDateString("pt-BR") : "sem data"; };
+  const sigla = p => `${p.tipo} ${p.numero}/${p.ano}`;
+  const fichaUrl = p => `https://www.camara.leg.br/propostas-legislativas/${p.id}`;
+
+  function categoria(p) {
+    const t = semAcento(p.situacao || p.tramitacao || "");
+    if (/norma juridica|transformad|promulgad/.test(t)) return "lei";
+    if (/arquiv|retirad|devolvid|prejudicad|rejeitad|vetad|perdeu a eficacia/.test(t)) return "arquivada";
+    if (/senado|sancao|promulga|remetid|enviad|revisora/.test(t)) return "aprovada";
+    return "tramitacao";
+  }
+
+  function preparar(j) {
+    const hoje = Date.now();
+    return (j.proposicoes || []).map(p => {
+      const d = data(p.dataStatus);
+      const dias = d ? Math.floor((hoje - d) / DIA) : null;
+      const cat = categoria(p);
+      return {...p, cat, dias,
+        urgente: /urg/i.test(p.regime || ""),
+        parada: cat === "tramitacao" && dias != null && dias > 180,
+        busca: semAcento([sigla(p), `${p.tipo} ${p.numero}`, p.ementa, p.situacao, p.tramitacao, p.orgao].join(" ")),
+      };
+    });
+  }
+
+  function cabecalho() {
+    const d = dados.deputado || {};
+    $("#nome").textContent = d.nome || "Deputado";
+    document.title = `Projetos de Lei · ${d.nome || ""}`;
+    const partes = [d.partido && d.uf ? `${d.partido}/${d.uf}` : d.partido, d.situacao, d.condicao, d.gabinete && `Gabinete ${d.gabinete}`, d.telefone && `(61) ${d.telefone}`].filter(Boolean);
+    $("#sub").textContent = partes.join(" · ");
+    if (d.foto) { $("#foto").src = d.foto; $("#foto").alt = `Foto de ${d.nome}`; } else $("#foto").hidden = true;
+    $("#perfil").href = `https://www.camara.leg.br/deputados/${d.id || dados.deputadoId}`;
+    const at = data(dados.atualizadoEm);
+    $("#atualizado").textContent = at ? at.toLocaleString("pt-BR", {timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"}) : "...";
+  }
+
+  function indicadores() {
+    const cont = c => props.filter(p => p.cat === c).length;
+    const itens = [
+      {k: "", rot: "Total de proposições", n: props.length},
+      {k: "tramitacao", rot: CATS.tramitacao.nome, n: cont("tramitacao"), cor: CATS.tramitacao.cor},
+      {k: "aprovada", rot: CATS.aprovada.nome, n: cont("aprovada"), cor: CATS.aprovada.cor},
+      {k: "lei", rot: CATS.lei.nome, n: cont("lei"), cor: CATS.lei.cor},
+      {k: "arquivada", rot: CATS.arquivada.nome, n: cont("arquivada"), cor: CATS.arquivada.cor},
+      {k: "x:30", rot: "Movimentadas (30 dias)", n: props.filter(p => p.dias != null && p.dias <= 30).length},
+      {k: "x:parada", rot: "Paradas há +180 dias", n: props.filter(p => p.parada).length},
+    ];
+    const box = $("#kpis"); box.replaceChildren();
+    for (const it of itens) {
+      const ativo = it.k.startsWith("x:") ? filtro.extra === it.k.slice(2) : (!filtro.extra && filtro.cat === it.k);
+      box.append(el("button", {class: "kpi" + (ativo ? " ativo" : ""), type: "button", "aria-pressed": ativo, onclick: () => {
+        if (it.k.startsWith("x:")) { const v = it.k.slice(2); filtro.extra = filtro.extra === v ? "" : v; filtro.cat = ""; }
+        else { filtro.cat = it.k; filtro.extra = ""; }
+        filtro.situacao = ""; atualizar();
+      }},
+        el("div", {class: "rot"}, it.cor ? el("span", {class: "bolinha", style: `background:${it.cor}`}) : null, it.rot),
+        el("div", {class: "num"}, it.n.toLocaleString("pt-BR"))));
+    }
+  }
+
+  function ultimas() {
+    const box = $("#ultimas"); box.replaceChildren();
+    props.filter(p => p.dataStatus).sort((a, b) => b.dataStatus.localeCompare(a.dataStatus)).slice(0, 12).forEach(p => {
+      box.append(el("li", {onclick: () => { limparFiltros(); filtro.busca = sigla(p); $("#busca").value = sigla(p); atualizar(true); }},
+        el("div", {}, el("span", {class: "sig mono"}, sigla(p)), el("span", {class: "dt"}, " · " + fmt(p.dataStatus))),
+        el("div", {class: "ds"}, p.tramitacao || p.situacao || "")));
+    });
+  }
+
+  function barras() {
+    const mapa = new Map();
+    props.forEach(p => { const s = p.situacao || "Sem situação informada"; mapa.set(s, (mapa.get(s) || 0) + 1); });
+    const lista = [...mapa].sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const max = lista.length ? lista[0][1] : 1;
+    const box = $("#barras"); box.replaceChildren();
+    lista.forEach(([s, n]) => {
+      const i = el("i"); i.style.width = (n / max * 100) + "%";
+      box.append(el("button", {class: "barra" + (filtro.situacao === s ? " ativo" : ""), type: "button", title: s, onclick: () => {
+        filtro.situacao = filtro.situacao === s ? "" : s; filtro.cat = ""; filtro.extra = ""; atualizar();
+      }}, el("div", {class: "t"}, i, el("span", {}, s)), el("div", {class: "n"}, n.toLocaleString("pt-BR"))));
+    });
+  }
+
+  function opcoes() {
+    const tipos = [...new Set(props.map(p => p.tipo))].sort();
+    const anos = [...new Set(props.map(p => p.ano))].sort((a, b) => b - a);
+    const preencher = (sel, vals, primeiro) => { const v = sel.value; sel.replaceChildren(el("option", {value: ""}, primeiro), ...vals.map(x => el("option", {value: x}, x))); sel.value = vals.map(String).includes(v) ? v : ""; };
+    preencher($("#fTipo"), tipos, "Todos os tipos");
+    preencher($("#fAno"), anos, "Todos os anos");
+  }
+
+  function filtrar() {
+    const q = semAcento(filtro.busca).replace(/\s+/g, " ").trim();
+    let r = props.filter(p =>
+      (!filtro.cat || p.cat === filtro.cat) &&
+      (!filtro.situacao || (p.situacao || "Sem situação informada") === filtro.situacao) &&
+      (filtro.extra !== "30" || (p.dias != null && p.dias <= 30)) &&
+      (filtro.extra !== "parada" || p.parada) &&
+      (!filtro.tipo || p.tipo === filtro.tipo) &&
+      (!filtro.ano || String(p.ano) === filtro.ano) &&
+      (!filtro.autoria || (filtro.autoria === "principal") === !!p.autoriaPrincipal) &&
+      (!q || q.split(" ").every(w => p.busca.includes(w))));
+    const ds = p => p.dataStatus || "";
+    if (filtro.ordem === "mov") r.sort((a, b) => ds(b).localeCompare(ds(a)));
+    if (filtro.ordem === "antiga") r.sort((a, b) => ds(a).localeCompare(ds(b)));
+    if (filtro.ordem === "numero") r.sort((a, b) => (b.ano - a.ano) || (b.numero - a.numero));
+    return r;
+  }
+
+  const autorTxt = a => a.partido ? `${a.nome} (${a.partido}${a.uf ? "/" + a.uf : ""})` : `${a.nome}${a.tipo && !/deputad/i.test(a.tipo) ? " (" + a.tipo + ")" : ""}`;
+
+  function cartao(p) {
+    const c = CATS[p.cat];
+    const autores = p.autores || [];
+    const detalhes = el("details", {},
+      el("summary", {}, "Ver detalhes e histórico"),
+      el("div", {class: "det"},
+        el("dl", {},
+          el("dt", {}, "Autoria"), el("dd", {}, autores.length ? autores.map(autorTxt).join("; ") : "Não informada"),
+          el("dt", {}, "Situação"), el("dd", {}, p.situacao || "Não informada"),
+          el("dt", {}, "Órgão atual"), el("dd", {}, p.orgao || "..."),
+          el("dt", {}, "Regime"), el("dd", {}, p.regime || "..."),
+          el("dt", {}, "Apreciação"), el("dd", {}, p.apreciacao || "..."),
+          el("dt", {}, "Apresentação"), el("dd", {}, fmt(p.apresentacao)),
+          p.despacho ? el("dt", {}, "Último despacho") : null, p.despacho ? el("dd", {}, p.despacho) : null),
+        (p.historico || []).length ? el("h3", {}, "Histórico recente") : null,
+        (p.historico || []).length ? el("ul", {class: "hist"}, p.historico.map(h =>
+          el("li", {}, el("div", {class: "q"}, `${fmt(h.data)}${h.orgao ? " · " + h.orgao : ""}`),
+            el("div", {}, h.tramitacao || h.situacao || ""),
+            h.despacho && h.despacho !== h.tramitacao ? el("div", {class: "q"}, h.despacho) : null))) : null,
+        el("div", {class: "links"},
+          el("a", {href: fichaUrl(p), target: "_blank", rel: "noopener"}, "Ficha de tramitação na Câmara ↗"),
+          p.urlTeor ? el("a", {href: p.urlTeor, target: "_blank", rel: "noopener"}, "Inteiro teor (PDF) ↗") : null)));
+
+    return el("article", {class: "painel prop"},
+      el("div", {class: "lin1"},
+        el("a", {class: "sigla", href: fichaUrl(p), target: "_blank", rel: "noopener"}, sigla(p)),
+        el("span", {class: "chip c-" + p.cat}, c.nome),
+        p.autoriaPrincipal ? null : el("span", {class: "tag"}, "Coautoria"),
+        p.urgente ? el("span", {class: "tag urg"}, "Urgência") : null,
+        p.parada ? el("span", {class: "tag parada"}, `Parada há ${p.dias} dias`) : null),
+      el("p", {class: "ementa"}, p.ementa || "(sem ementa)"),
+      el("p", {class: "mov"}, el("b", {}, fmt(p.dataStatus)), p.orgao ? ` · ${p.orgao}` : "", ` · ${p.tramitacao || p.situacao || "sem movimentação registrada"}`),
+      detalhes);
+  }
+
+  function lista(rolar) {
+    const r = filtrar();
+    const box = $("#lista"); box.replaceChildren();
+    const desc = [];
+    if (filtro.cat) desc.push(CATS[filtro.cat].nome.toLowerCase());
+    if (filtro.extra === "30") desc.push("movimentadas nos últimos 30 dias");
+    if (filtro.extra === "parada") desc.push("paradas há mais de 180 dias");
+    if (filtro.situacao) desc.push(`situação "${filtro.situacao}"`);
+    $("#contagem").replaceChildren(el("b", {}, r.length.toLocaleString("pt-BR")), ` proposiç${r.length === 1 ? "ão" : "ões"}`, desc.length ? " · " + desc.join(" · ") : "");
+    if (!r.length) box.append(el("div", {class: "painel vazio"}, "Nenhuma proposição encontrada com esses filtros."));
+    r.slice(0, visiveis).forEach(p => box.append(cartao(p)));
+    $("#mais").hidden = r.length <= visiveis;
+    $("#mais").textContent = `Mostrar mais (${(r.length - visiveis).toLocaleString("pt-BR")} restantes)`;
+    if (rolar) $("#contagem").scrollIntoView({behavior: "smooth", block: "start"});
+  }
+
+  function atualizar(rolar) { visiveis = POR_PAGINA; indicadores(); barras(); lista(rolar); }
+
+  function limparFiltros() {
+    Object.assign(filtro, {cat: "", extra: "", situacao: "", tipo: "", ano: "", autoria: "", busca: ""});
+    $("#busca").value = ""; $("#fTipo").value = ""; $("#fAno").value = ""; $("#fAutoria").value = "";
+  }
+
+  let timer;
+  $("#busca").addEventListener("input", e => { clearTimeout(timer); timer = setTimeout(() => { filtro.busca = e.target.value; atualizar(); }, 200); });
+  $("#fTipo").addEventListener("change", e => { filtro.tipo = e.target.value; atualizar(); });
+  $("#fAno").addEventListener("change", e => { filtro.ano = e.target.value; atualizar(); });
+  $("#fAutoria").addEventListener("change", e => { filtro.autoria = e.target.value; atualizar(); });
+  $("#fOrdem").addEventListener("change", e => { filtro.ordem = e.target.value; atualizar(); });
+  $("#limpar").addEventListener("click", () => { limparFiltros(); atualizar(); });
+  $("#mais").addEventListener("click", () => { visiveis += POR_PAGINA; lista(); });
+
+  async function carregar(primeira) {
+    try {
+      const r = await fetch("dados.json?t=" + Date.now(), {cache: "no-store"});
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      if (!primeira && dados && j.atualizadoEm === dados.atualizadoEm) return;
+      dados = j; props = preparar(j);
+      cabecalho(); opcoes(); ultimas(); indicadores(); barras(); lista();
+    } catch (e) {
+      if (primeira) $("#lista").replaceChildren(el("div", {class: "painel erro"},
+        "Ainda não há dados para mostrar. Se o painel acabou de ser criado, aguarde a primeira atualização automática (alguns minutos) e recarregue a página."));
+      console.error(e);
+    }
+  }
+  carregar(true);
+  setInterval(() => carregar(false), 15 * 60 * 1000);   // confere novos dados a cada 15 minutos
+})();
+</script>
+</body>
+</html>
