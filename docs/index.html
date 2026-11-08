@@ -123,8 +123,9 @@
       <a id="perfil" href="#" target="_blank" rel="noopener">Perfil na Câmara ↗</a>
     </div>
     <div class="sync">
-      <div><span class="ponto"></span>Dados atualizados em <b id="atualizado">...</b></div>
-      <div>Atualização automática a cada 3 horas</div>
+      <div><span class="ponto" id="pontoVerif"></span>Última verificação na Câmara: <b id="verificado">...</b></div>
+      <div>Última mudança nos projetos: <span id="atualizado">...</span></div>
+      <div id="avisoVerif" style="color:var(--amber)" hidden></div>
     </div>
   </header>
 
@@ -227,8 +228,24 @@
     $("#sub").textContent = partes.join(" · ");
     if (d.foto) { $("#foto").src = d.foto; $("#foto").alt = `Foto de ${d.nome}`; } else $("#foto").hidden = true;
     $("#perfil").href = `https://www.camara.leg.br/deputados/${d.id || dados.deputadoId}`;
-    const at = data(dados.atualizadoEm);
-    $("#atualizado").textContent = at ? at.toLocaleString("pt-BR", {timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"}) : "...";
+    $("#atualizado").textContent = dataHora(dados.atualizadoEm);
+  }
+
+  const dataHora = s => { const d = data(s); return d ? d.toLocaleString("pt-BR", {timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"}) : "..."; };
+
+  async function verificacao() {
+    try {
+      const r = await fetch("verificacao.json?t=" + Date.now(), {cache: "no-store"});
+      if (!r.ok) throw 0;
+      const v = await r.json();
+      $("#verificado").textContent = dataHora(v.verificadoEm);
+      const horas = (Date.now() - data(v.verificadoEm)) / 3600000;
+      const aviso = horas > 4 ? "A Câmara ou o GitHub estão demorando a responder; os dados podem estar um pouco defasados." : (!v.ok ? v.mensagem : "");
+      $("#avisoVerif").textContent = aviso; $("#avisoVerif").hidden = !aviso;
+      $("#pontoVerif").style.background = aviso ? "var(--amber)" : "var(--accent)";
+    } catch (e) {
+      if (dados) $("#verificado").textContent = dataHora(dados.atualizadoEm);
+    }
   }
 
   function indicadores() {
@@ -387,8 +404,8 @@
       console.error(e);
     }
   }
-  carregar(true);
-  setInterval(() => carregar(false), 15 * 60 * 1000);   // confere novos dados a cada 15 minutos
+  carregar(true).then(verificacao);
+  setInterval(() => carregar(false).then(verificacao), 10 * 60 * 1000);   // confere novos dados a cada 10 minutos
 })();
 </script>
 </body>
