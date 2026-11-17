@@ -52,6 +52,7 @@ jobs:
             echo "Sem mudanças nos dados."
           else
             git commit -m "Atualiza proposições"
+            git pull --rebase -X theirs origin main || (git rebase --abort; git pull --no-rebase -X ours origin main)
             git push
           fi
 
