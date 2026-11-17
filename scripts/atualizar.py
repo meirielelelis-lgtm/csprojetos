@@ -25,6 +25,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 API = os.environ.get("CAMARA_API", "https://dadosabertos.camara.leg.br/api/v2").rstrip("/")
+ARQUIVOS = os.environ.get("CAMARA_ARQUIVOS", "https://dadosabertos.camara.leg.br/arquivos").rstrip("/")
 DEPUTADO_ID = int(os.environ.get("DEPUTADO_ID", "204488"))
 TIPOS = os.environ.get("TIPOS", "").replace(" ", "")
 ANO_INICIAL = int(os.environ.get("ANO_INICIAL", "2015"))
@@ -41,7 +42,7 @@ def log(*a):
     print(*a, flush=True)
 
 
-def baixar(caminho_ou_url, params=None, tentativas=6):
+def baixar(caminho_ou_url, params=None, tentativas=6, tempo=90):
     url = caminho_ou_url if caminho_ou_url.startswith("http") else API + caminho_ou_url
     if params:
         url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params, safe=",")
@@ -51,7 +52,7 @@ def baixar(caminho_ou_url, params=None, tentativas=6):
                 "Accept": "application/json",
                 "User-Agent": "painel-proposicoes/1.0 (GitHub Actions)",
             })
-            with urllib.request.urlopen(req, timeout=90) as r:
+            with urllib.request.urlopen(req, timeout=tempo) as r:
                 return json.load(r)
         except urllib.error.HTTPError as e:
             if e.code == 404:
@@ -79,32 +80,38 @@ def paginar(caminho, params):
     return itens
 
 
-def siglas_existentes():
-    """Todas as siglas de tipo de proposição que a Câmara conhece."""
-    try:
-        dados = (baixar("/referencias/proposicoes/siglaTipo") or {}).get("dados") or []
-        return sorted({d["sigla"].strip() for d in dados if d.get("sigla")})
-    except Exception as e:
-        log(f"  aviso: não consegui a lista de tipos da Câmara ({e})")
-        return []
-
-
-def listar_ano(ano, siglas):
-    """Proposições do deputado num ano. Sem TIPOS, faz a busca geral e depois pede
-    explicitamente todos os tipos, porque a busca geral deixa de fora alguns tipos
-    acessórios (emendas de plenário, pareceres, declarações de voto...)."""
-    base = {"idDeputadoAutor": DEPUTADO_ID, "ano": ano, "itens": 100, "ordem": "ASC", "ordenarPor": "id"}
+def listar_ano(ano):
+    params = {"idDeputadoAutor": DEPUTADO_ID, "ano": ano, "itens": 100, "ordem": "ASC", "ordenarPor": "id"}
     if TIPOS:
-        return paginar("/proposicoes", {**base, "siglaTipo": TIPOS})
-    itens = {p["id"]: p for p in paginar("/proposicoes", base)}
-    for i in range(0, len(siglas), 40):
-        lote = ",".join(siglas[i:i + 40])
+        params["siglaTipo"] = TIPOS
+    return paginar("/proposicoes", params)
+
+
+def ids_dos_arquivos(anos):
+    """A busca por autor da API deixa de fora alguns tipos (emendas de plenário, pareceres,
+    declarações de voto...). O arquivo diário de autores da Câmara traz todos.
+    Devolve {id da proposição: ano}."""
+    achados = {}
+    for ano in anos:
+        url = f"{ARQUIVOS}/proposicoesAutores/json/proposicoesAutores-{ano}.json"
         try:
-            for p in paginar("/proposicoes", {**base, "siglaTipo": lote}):
-                itens.setdefault(p["id"], p)
+            dados = (baixar(url, tentativas=3, tempo=300) or {}).get("dados") or []
         except Exception as e:
-            log(f"  aviso: busca por tipos falhou em {ano} ({e})")
-    return list(itens.values())
+            log(f"  aviso: não consegui o arquivo de autores de {ano} ({e})")
+            continue
+        n = 0
+        for r in dados:
+            dep = r.get("idDeputadoAutor") or id_da_uri(r.get("uriAutor"))
+            pid = r.get("idProposicao") or id_da_uri(r.get("uriProposicao"))
+            try:
+                dep, pid = int(dep), int(pid)
+            except (TypeError, ValueError):
+                continue
+            if dep == DEPUTADO_ID:
+                achados[pid] = ano
+                n += 1
+        log(f"  arquivo de autores {ano}: {len(dados)} linhas, {n} do deputado")
+    return achados
 
 
 def id_da_uri(uri):
@@ -254,10 +261,9 @@ def main():
 
     # 1) lista de proposições, ano a ano (se um ano falhar, mantém o que já se sabia daquele ano)
     lista = {}
-    siglas = [] if TIPOS else siglas_existentes()
     for ano in range(ANO_INICIAL, agora.year + 1):
         try:
-            itens = listar_ano(ano, siglas)
+            itens = listar_ano(ano)
         except Exception as e:
             itens = [{"id": p["id"], "siglaTipo": p["tipo"], "numero": p["numero"], "ano": p["ano"], "ementa": p["ementa"]}
                      for p in anteriores.values() if p.get("ano") == ano]
@@ -265,6 +271,20 @@ def main():
             avisos += 1
         for p in itens:
             lista[p["id"]] = p
+    # 1b) tipos que a busca por autor não traz, pelo arquivo diário de autores
+    if not TIPOS:
+        anos_arq = range(max(ANO_INICIAL, 2019), agora.year + 1) if completa else [agora.year]
+        extras_arq = ids_dos_arquivos(anos_arq)
+        novos_arq = [i for i in extras_arq if i not in lista]
+        for i in novos_arq:
+            lista[i] = {"id": i, "ano": extras_arq[i], "_arquivo": True}
+        log(f"  {len(novos_arq)} proposições a mais encontradas no arquivo de autores")
+        # nas rodadas rápidas, os anos anteriores do arquivo não são baixados: mantém o que já se sabia
+        for i, p in anteriores.items():
+            if p.get("fonte") == "arquivo" and i not in lista:
+                lista[i] = {"id": i, "siglaTipo": p.get("tipo"), "numero": p.get("numero"), "ano": p.get("ano"),
+                            "ementa": p.get("ementa"), "_arquivo": True}
+
     if not lista:
         gravar_verificacao(agora, False, "A Câmara não respondeu.")
         sys.exit("Nenhuma proposição encontrada. Verifique DEPUTADO_ID e TIPOS, ou se a Câmara está fora do ar.")
@@ -322,6 +342,8 @@ def main():
         ant = anteriores.get(i)
         if i in basicos:
             p = dict(basicos[i])
+            if lista[i].get("_arquivo"):
+                p["fonte"] = "arquivo"
             ex_ = novos_extras.get(i) or ({k: ant.get(k) for k in ("autoriaPrincipal", "autores", "autoresTotal", "historico")} if ant else None)
             if ex_ is None:
                 ex_ = {"autoriaPrincipal": True, "autores": [], "historico": []}
