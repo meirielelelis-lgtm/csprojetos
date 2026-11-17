@@ -1,6 +1,6 @@
 # Painel de Projetos de Lei · Célio Studart
 
-Página online que mostra os projetos do deputado (PL, PLP, PEC e PDL, de autoria e coautoria) com a situação atual, a última movimentação e o histórico recente de cada um. Os dados vêm da API de Dados Abertos da Câmara dos Deputados e são conferidos sozinhos de hora em hora.
+Página online que mostra os projetos do deputado (projetos de lei, PECs, requerimentos, indicações, emendas e demais tipos, de autoria e coautoria) com a situação atual, a última movimentação e o histórico recente de cada um. Os dados vêm da API de Dados Abertos da Câmara dos Deputados e são conferidos sozinhos de hora em hora.
 
 ## Como funciona
 
@@ -31,7 +31,7 @@ A partir daí não precisa fazer mais nada: o robô confere tudo de hora em hora
 Todos ficam no arquivo `.github/workflows/atualizar.yml`, na parte `env:`:
 
 - **Outro deputado:** troque `DEPUTADO_ID` (o número que aparece no endereço do perfil na Câmara, por exemplo `camara.leg.br/deputados/204488`).
-- **Outros tipos de proposição:** edite `TIPOS`, por exemplo `PL,PLP,PEC,PDL,REQ,INC`.
+- **Tipos de proposição:** `TIPOS` vazio traz todos os tipos. Para limitar, use por exemplo `PL,PLP,PEC,PDL`.
 - **Frequência:** a linha `cron: "23 * * * *"` significa de hora em hora. Para a cada 3 horas, use `"23 */3 * * *"`.
 
 Para forçar uma atualização na hora: aba **Actions > Atualizar painel > Run workflow** (marque "Revisão completa" se quiser reconsultar autores e histórico de tudo).

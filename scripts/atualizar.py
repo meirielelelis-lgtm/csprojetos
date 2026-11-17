@@ -10,7 +10,7 @@ Não precisa instalar nada: usa só a biblioteca padrão do Python.
 
 Variáveis que podem ser ajustadas (no arquivo .github/workflows/atualizar.yml):
   DEPUTADO_ID   id do deputado na Câmara (Célio Studart = 204488)
-  TIPOS         tipos de proposição, separados por vírgula
+  TIPOS         tipos de proposição, separados por vírgula (vazio = todos os tipos)
   ANO_INICIAL   primeiro ano a ser buscado
   COMPLETA=1    força a atualização completa de todas as proposições
 """
@@ -26,11 +26,14 @@ from concurrent.futures import ThreadPoolExecutor
 
 API = os.environ.get("CAMARA_API", "https://dadosabertos.camara.leg.br/api/v2").rstrip("/")
 DEPUTADO_ID = int(os.environ.get("DEPUTADO_ID", "204488"))
-TIPOS = os.environ.get("TIPOS", "PL,PLP,PEC,PDL")
+TIPOS = os.environ.get("TIPOS", "").replace(" ", "")
 ANO_INICIAL = int(os.environ.get("ANO_INICIAL", "2015"))
 AQUI = os.path.dirname(os.path.abspath(__file__))
 SAIDA = os.environ.get("SAIDA", os.path.join(AQUI, "..", "docs", "dados.json"))
-HISTORICO_GUARDADO = 8   # quantas tramitações recentes guardar por proposição
+HISTORICO_GUARDADO = 8   # quantas tramitações recentes guardar por projeto
+HISTORICO_OUTROS = 4     # e pelos demais tipos (requerimentos, emendas etc.)
+PROJETOS = {"PL", "PLP", "PEC", "PDL", "PLV", "MPV"}
+AUTORES_GUARDADOS = 30   # requerimentos de CPI podem ter centenas de assinaturas
 TRABALHADORES = 4        # requisições simultâneas (não aumentar muito: a Câmara limita)
 
 
@@ -118,6 +121,7 @@ def montar_basico(item, det):
     return {
         "id": item["id"],
         "tipo": item.get("siglaTipo") or det.get("siglaTipo"),
+        "descricaoTipo": det.get("descricaoTipo"),
         "numero": item.get("numero") or det.get("numero"),
         "ano": item.get("ano") or det.get("ano"),
         "ementa": (det.get("ementa") or item.get("ementa") or "").strip(),
@@ -139,7 +143,7 @@ def montar_autores_historico(p, partidos_fn, anterior):
     autores_api = sorted(autores_api, key=lambda a: (a.get("ordemAssinatura") or 9999))
     antigos = {a.get("id"): a for a in (anterior or {}).get("autores", []) if a.get("id")}
     autores = []
-    for a in autores_api:
+    for a in autores_api[:AUTORES_GUARDADOS]:
         dep_id = id_da_uri(a.get("uri")) if "deputados" in str(a.get("uri")) else None
         partido, uf = partido_de(partidos_fn(), dep_id, p.get("ano") or 2019) if dep_id else ("", "")
         if dep_id and not partido and dep_id in antigos:
@@ -154,10 +158,11 @@ def montar_autores_historico(p, partidos_fn, anterior):
         "tramitacao": t.get("descricaoTramitacao"),
         "situacao": t.get("descricaoSituacao"),
         "despacho": corta(t.get("despacho"), 500),
-    } for t in tram[:HISTORICO_GUARDADO]]
+    } for t in tram[:(HISTORICO_GUARDADO if p.get("tipo") in PROJETOS else HISTORICO_OUTROS)]]
     return {
         "autoriaPrincipal": bool(autores) and autores[0].get("id") == DEPUTADO_ID,
         "autores": autores,
+        "autoresTotal": len(autores_api),
         "historico": historico,
     }
 
@@ -192,7 +197,7 @@ def main():
         or anterior.get("tipos") != TIPOS
         or dias_desde_completa >= 7          # uma vez por semana revisa autores e histórico de tudo
     )
-    log(f"Deputado {DEPUTADO_ID} | tipos {TIPOS} | revisão {'COMPLETA' if completa else 'rápida'}")
+    log(f"Deputado {DEPUTADO_ID} | tipos {TIPOS or 'todos'} | revisão {'COMPLETA' if completa else 'rápida'}")
     avisos = 0
 
     # 0) dados do deputado (se falhar, mantém os anteriores)
@@ -222,8 +227,9 @@ def main():
     for ano in range(ANO_INICIAL, agora.year + 1):
         try:
             itens = paginar("/proposicoes", {
-                "idDeputadoAutor": DEPUTADO_ID, "siglaTipo": TIPOS, "ano": ano,
+                "idDeputadoAutor": DEPUTADO_ID, "ano": ano,
                 "itens": 100, "ordem": "ASC", "ordenarPor": "id",
+                **({"siglaTipo": TIPOS} if TIPOS else {}),
             })
         except Exception as e:
             itens = [{"id": p["id"], "siglaTipo": p["tipo"], "numero": p["numero"], "ano": p["ano"], "ementa": p["ementa"]}
@@ -289,7 +295,7 @@ def main():
         ant = anteriores.get(i)
         if i in basicos:
             p = dict(basicos[i])
-            ex_ = novos_extras.get(i) or ({k: ant.get(k) for k in ("autoriaPrincipal", "autores", "historico")} if ant else None)
+            ex_ = novos_extras.get(i) or ({k: ant.get(k) for k in ("autoriaPrincipal", "autores", "autoresTotal", "historico")} if ant else None)
             if ex_ is None:
                 ex_ = {"autoriaPrincipal": True, "autores": [], "historico": []}
             p.update(ex_)

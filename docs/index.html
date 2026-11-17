@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Projetos de Lei · Célio Studart</title>
+<title>Proposições · Célio Studart</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -70,7 +70,8 @@
   .filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 14px;margin:14px 0 10px;position:sticky;top:0;z-index:5}
   @media (max-width:700px){.filtros{position:static}.filtros select{flex:1 1 45%}}
   .filtros input,.filtros select{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:#fff;color:var(--fg)}
-  .filtros input{flex:1;min-width:200px}
+  .filtros input{flex:1;min-width:220px}
+  .filtros select{max-width:280px;text-overflow:ellipsis}
   .filtros button{font:inherit;font-size:13.5px;border:0;background:none;color:var(--blue);cursor:pointer;padding:6px}
   .contagem{color:var(--muted);font-size:13.5px;margin:0 2px 10px}
   .contagem b{color:var(--fg)}
@@ -124,7 +125,7 @@
     </div>
     <div class="sync">
       <div><span class="ponto" id="pontoVerif"></span>Última verificação na Câmara: <b id="verificado">...</b></div>
-      <div>Última mudança nos projetos: <span id="atualizado">...</span></div>
+      <div>Última mudança nas proposições: <span id="atualizado">...</span></div>
       <div id="avisoVerif" style="color:var(--amber)" hidden></div>
     </div>
   </header>
@@ -143,7 +144,14 @@
   </section>
 
   <section class="painel filtros" aria-label="Filtros">
-    <input id="busca" type="search" placeholder="Buscar por número ou assunto (ex.: PL 1234/2023, animais, saúde)">
+    <input id="busca" type="search" placeholder="Buscar por número ou assunto (ex.: PL 1234/2023, REQ 4152/2026, animais)">
+    <select id="fGrupo" aria-label="Grupo">
+      <option value="">Todas as proposições</option>
+      <option value="projetos">Projetos (PL, PLP, PEC, PDL)</option>
+      <option value="requerimentos">Requerimentos</option>
+      <option value="emendas">Emendas e pareceres</option>
+      <option value="outros">Outras (indicações, declarações de voto...)</option>
+    </select>
     <select id="fTipo" aria-label="Tipo"><option value="">Todos os tipos</option></select>
     <select id="fAno" aria-label="Ano"><option value="">Todos os anos</option></select>
     <select id="fAutoria" aria-label="Autoria">
@@ -181,7 +189,7 @@
   const DIA = 86400000;
   const $ = s => document.querySelector(s);
   let dados = null, props = [], visiveis = POR_PAGINA;
-  const filtro = {cat: "", extra: "", situacao: "", tipo: "", ano: "", autoria: "", busca: "", ordem: "mov"};
+  const filtro = {cat: "", extra: "", situacao: "", grupo: "", tipo: "", ano: "", autoria: "", busca: "", ordem: "mov"};
 
   const semAcento = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const el = (tag, attrs = {}, ...filhos) => {
@@ -197,6 +205,15 @@
   const fmt = s => { const d = data(s); return d ? d.toLocaleDateString("pt-BR") : "sem data"; };
   const sigla = p => `${p.tipo} ${p.numero}/${p.ano}`;
   const fichaUrl = p => `https://www.camara.leg.br/propostas-legislativas/${p.id}`;
+
+  const PROJETOS = new Set(["PL", "PLP", "PEC", "PDL", "PLV", "MPV"]);
+  function grupoDe(p) {
+    const d = semAcento(p.descricaoTipo || "");
+    if (PROJETOS.has(p.tipo)) return "projetos";
+    if (d.startsWith("requerimento") || /^(REQ|RIC|RCP|RPD|REL)$/.test(p.tipo)) return "requerimentos";
+    if (/^(emenda|subemenda|substitutivo|parecer)/.test(d) || /^(EM|SB|PRL|PAR|PPP|PRV)/.test(p.tipo)) return "emendas";
+    return "outros";
+  }
 
   function categoria(p) {
     const t = semAcento(p.situacao || p.tramitacao || "");
@@ -215,7 +232,8 @@
       return {...p, cat, dias,
         urgente: /urg/i.test(p.regime || ""),
         parada: cat === "tramitacao" && dias != null && dias > 180,
-        busca: semAcento([sigla(p), `${p.tipo} ${p.numero}`, p.ementa, p.situacao, p.tramitacao, p.orgao].join(" ")),
+        grupo: grupoDe(p), nomeTipo: p.descricaoTipo || p.tipo,
+        busca: semAcento([sigla(p), `${p.tipo} ${p.numero}`, p.descricaoTipo, p.ementa, p.situacao, p.tramitacao, p.orgao].join(" ")),
       };
     });
   }
@@ -223,7 +241,7 @@
   function cabecalho() {
     const d = dados.deputado || {};
     $("#nome").textContent = d.nome || "Deputado";
-    document.title = `Projetos de Lei · ${d.nome || ""}`;
+    document.title = `Proposições · ${d.nome || ""}`;
     const partes = [d.partido && d.uf ? `${d.partido}/${d.uf}` : d.partido, d.situacao, d.condicao, d.gabinete && `Gabinete ${d.gabinete}`, d.telefone && `(61) ${d.telefone}`].filter(Boolean);
     $("#sub").textContent = partes.join(" · ");
     if (d.foto) { $("#foto").src = d.foto; $("#foto").alt = `Foto de ${d.nome}`; } else $("#foto").hidden = true;
@@ -296,10 +314,13 @@
   }
 
   function opcoes() {
-    const tipos = [...new Set(props.map(p => p.tipo))].sort();
     const anos = [...new Set(props.map(p => p.ano))].sort((a, b) => b - a);
-    const preencher = (sel, vals, primeiro) => { const v = sel.value; sel.replaceChildren(el("option", {value: ""}, primeiro), ...vals.map(x => el("option", {value: x}, x))); sel.value = vals.map(String).includes(v) ? v : ""; };
-    preencher($("#fTipo"), tipos, "Todos os tipos");
+    const preencher = (sel, vals, primeiro, rotulo = x => x) => { const v = sel.value; sel.replaceChildren(el("option", {value: ""}, primeiro), ...vals.map(x => el("option", {value: x}, rotulo(x)))); sel.value = vals.map(String).includes(v) ? v : ""; };
+    const base = props.filter(p => !filtro.grupo || p.grupo === filtro.grupo);
+    const cont = new Map(); base.forEach(p => cont.set(p.nomeTipo, (cont.get(p.nomeTipo) || 0) + 1));
+    const tipos = [...cont.keys()].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    preencher($("#fTipo"), tipos, "Todos os tipos", t => `${t} (${cont.get(t)})`);
+    filtro.tipo = $("#fTipo").value;
     preencher($("#fAno"), anos, "Todos os anos");
   }
 
@@ -310,7 +331,8 @@
       (!filtro.situacao || (p.situacao || "Sem situação informada") === filtro.situacao) &&
       (filtro.extra !== "30" || (p.dias != null && p.dias <= 30)) &&
       (filtro.extra !== "parada" || p.parada) &&
-      (!filtro.tipo || p.tipo === filtro.tipo) &&
+      (!filtro.grupo || p.grupo === filtro.grupo) &&
+      (!filtro.tipo || p.nomeTipo === filtro.tipo) &&
       (!filtro.ano || String(p.ano) === filtro.ano) &&
       (!filtro.autoria || (filtro.autoria === "principal") === !!p.autoriaPrincipal) &&
       (!q || q.split(" ").every(w => p.busca.includes(w))));
@@ -330,7 +352,7 @@
       el("summary", {}, "Ver detalhes e histórico"),
       el("div", {class: "det"},
         el("dl", {},
-          el("dt", {}, "Autoria"), el("dd", {}, autores.length ? autores.map(autorTxt).join("; ") : "Não informada"),
+          el("dt", {}, "Autoria"), el("dd", {}, autores.length ? autores.map(autorTxt).join("; ") + (p.autoresTotal > autores.length ? ` e mais ${p.autoresTotal - autores.length}` : "") : "Não informada"),
           el("dt", {}, "Situação"), el("dd", {}, p.situacao || "Não informada"),
           el("dt", {}, "Órgão atual"), el("dd", {}, p.orgao || "..."),
           el("dt", {}, "Regime"), el("dd", {}, p.regime || "..."),
@@ -349,6 +371,7 @@
     return el("article", {class: "painel prop"},
       el("div", {class: "lin1"},
         el("a", {class: "sigla", href: fichaUrl(p), target: "_blank", rel: "noopener"}, sigla(p)),
+        p.descricaoTipo && p.grupo !== "projetos" ? el("span", {class: "tag"}, p.descricaoTipo) : null,
         el("span", {class: "chip c-" + p.cat}, c.nome),
         p.autoriaPrincipal ? null : el("span", {class: "tag"}, "Coautoria"),
         p.urgente ? el("span", {class: "tag urg"}, "Urgência") : null,
@@ -377,12 +400,13 @@
   function atualizar(rolar) { visiveis = POR_PAGINA; indicadores(); barras(); lista(rolar); }
 
   function limparFiltros() {
-    Object.assign(filtro, {cat: "", extra: "", situacao: "", tipo: "", ano: "", autoria: "", busca: ""});
-    $("#busca").value = ""; $("#fTipo").value = ""; $("#fAno").value = ""; $("#fAutoria").value = "";
+    Object.assign(filtro, {cat: "", extra: "", situacao: "", grupo: "", tipo: "", ano: "", autoria: "", busca: ""});
+    $("#busca").value = ""; $("#fGrupo").value = ""; $("#fTipo").value = ""; $("#fAno").value = ""; $("#fAutoria").value = ""; opcoes();
   }
 
   let timer;
   $("#busca").addEventListener("input", e => { clearTimeout(timer); timer = setTimeout(() => { filtro.busca = e.target.value; atualizar(); }, 200); });
+  $("#fGrupo").addEventListener("change", e => { filtro.grupo = e.target.value; $("#fTipo").value = ""; opcoes(); atualizar(); });
   $("#fTipo").addEventListener("change", e => { filtro.tipo = e.target.value; atualizar(); });
   $("#fAno").addEventListener("change", e => { filtro.ano = e.target.value; atualizar(); });
   $("#fAutoria").addEventListener("change", e => { filtro.autoria = e.target.value; atualizar(); });

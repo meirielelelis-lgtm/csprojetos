@@ -38,7 +38,7 @@ jobs:
       - name: Buscar dados na Câmara
         env:
           DEPUTADO_ID: "204488"
-          TIPOS: "PL,PLP,PEC,PDL"
+          TIPOS: ""            # vazio = todos os tipos; ou ex.: "PL,PLP,PEC,PDL"
           ANO_INICIAL: "2015"
           COMPLETA: ${{ inputs.completa && '1' || '0' }}
         run: python scripts/atualizar.py
