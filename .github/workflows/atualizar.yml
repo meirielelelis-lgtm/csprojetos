@@ -24,7 +24,7 @@ concurrency:
 jobs:
   atualizar:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
     environment:
       name: github-pages
       url: ${{ steps.publicar.outputs.page_url }}
