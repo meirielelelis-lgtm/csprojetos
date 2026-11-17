@@ -56,6 +56,8 @@ def baixar(caminho_ou_url, params=None, tentativas=6):
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return None
+            if e.code == 400:
+                raise RuntimeError(f"Consulta recusada pela Câmara (HTTP 400): {url}")
             espera = 2 ** i + (10 if e.code == 429 else 0)
             log(f"  aviso: HTTP {e.code} em {url} (tentando de novo em {espera}s)")
         except Exception as e:  # rede instável, timeout etc.
@@ -75,6 +77,34 @@ def paginar(caminho, params):
         itens += r.get("dados", [])
         url = next((l.get("href") for l in r.get("links", []) if l.get("rel") == "next"), None)
     return itens
+
+
+def siglas_existentes():
+    """Todas as siglas de tipo de proposição que a Câmara conhece."""
+    try:
+        dados = (baixar("/referencias/proposicoes/siglaTipo") or {}).get("dados") or []
+        return sorted({d["sigla"].strip() for d in dados if d.get("sigla")})
+    except Exception as e:
+        log(f"  aviso: não consegui a lista de tipos da Câmara ({e})")
+        return []
+
+
+def listar_ano(ano, siglas):
+    """Proposições do deputado num ano. Sem TIPOS, faz a busca geral e depois pede
+    explicitamente todos os tipos, porque a busca geral deixa de fora alguns tipos
+    acessórios (emendas de plenário, pareceres, declarações de voto...)."""
+    base = {"idDeputadoAutor": DEPUTADO_ID, "ano": ano, "itens": 100, "ordem": "ASC", "ordenarPor": "id"}
+    if TIPOS:
+        return paginar("/proposicoes", {**base, "siglaTipo": TIPOS})
+    itens = {p["id"]: p for p in paginar("/proposicoes", base)}
+    for i in range(0, len(siglas), 40):
+        lote = ",".join(siglas[i:i + 40])
+        try:
+            for p in paginar("/proposicoes", {**base, "siglaTipo": lote}):
+                itens.setdefault(p["id"], p)
+        except Exception as e:
+            log(f"  aviso: busca por tipos falhou em {ano} ({e})")
+    return list(itens.values())
 
 
 def id_da_uri(uri):
@@ -224,13 +254,10 @@ def main():
 
     # 1) lista de proposições, ano a ano (se um ano falhar, mantém o que já se sabia daquele ano)
     lista = {}
+    siglas = [] if TIPOS else siglas_existentes()
     for ano in range(ANO_INICIAL, agora.year + 1):
         try:
-            itens = paginar("/proposicoes", {
-                "idDeputadoAutor": DEPUTADO_ID, "ano": ano,
-                "itens": 100, "ordem": "ASC", "ordenarPor": "id",
-                **({"siglaTipo": TIPOS} if TIPOS else {}),
-            })
+            itens = listar_ano(ano, siglas)
         except Exception as e:
             itens = [{"id": p["id"], "siglaTipo": p["tipo"], "numero": p["numero"], "ano": p["ano"], "ementa": p["ementa"]}
                      for p in anteriores.values() if p.get("ano") == ano]
